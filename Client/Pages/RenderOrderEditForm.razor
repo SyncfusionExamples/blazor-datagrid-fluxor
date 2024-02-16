@@ -1,0 +1,133 @@
+﻿@using FluxorSyncfusionGrid.Client.Services;
+@using FluxorSyncfusionGrid.Shared;
+@using Syncfusion.Blazor.Inputs;
+@using FluxorSyncfusionGrid.Client.FormFields
+
+@inherits FluxorComponent
+@implements IDisposable
+@inject IState<OrdersState> OrdersState
+@inject IState<OrderState> OrderState
+@inject IDispatcher Dispatcher
+@inject IActionSubscriber ActionSubscriber
+@inject OrderService postService
+
+<OrderEditForm EditContext="editContext" 
+    ButtonPressed="HandleButtonClick"
+    HandleSubmit="OnSubmit" 
+    HandleReset="ResetForm" 
+    HandleSelect="PopulateForm" 
+    IsEditForm="IsEditForm()">
+
+    
+    <div>
+        <div class="form-row">
+            <div class="form-group col-md-12">
+                <label>OrderID:</label>
+                <SfNumericTextBox ID="OrderID" @bind-Value="@(Order.OrderID)" Enabled="@IsAdd"></SfNumericTextBox>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group col-md-12">
+                <label>CustomerID:</label>
+                <SfTextBox ID="CustomerID" FloatLabelType="FloatLabelType.Never" @bind-Value="@(Order.CustomerID)"></SfTextBox>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group col-md-12">
+                <label>ShipCity:</label>
+                <SfTextBox ID="ShipCity" @bind-Value="@(Order.ShipCity)"></SfTextBox>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group col-md-12">
+                <label>Freight:</label>
+                <SfNumericTextBox TValue="double" @bind-Value="@Order.Freight"></SfNumericTextBox>
+            </div>
+        </div>
+    </div>
+</OrderEditForm>
+
+@code {
+    private EditContext editContext;
+    private Order Order;
+    [Parameter] public bool IsAdd { get; set; }
+    [Parameter]
+    public EventCallback EditFormButtonPressed { get; set; }
+
+    public void HandleButtonClick()
+    {
+        EditFormButtonPressed.InvokeAsync();
+
+    }
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        Order = Data;
+        editContext = new(Order);
+
+        ActionSubscriber.SubscribeToAction<SetOrderAction>(this, async (Action) =>
+        {
+            await Task.Delay(1);
+            PopulateForm();
+            StateHasChanged();
+        });
+
+        ActionSubscriber.SubscribeToAction<UpdateOrderAction>(this, (Action) =>
+        {
+            ResetForm();
+        });
+
+        OrderState.StateChanged += OrderState_StateChanged;
+    }
+
+    private void OrderState_StateChanged(object sender, System.EventArgs e) => System.Console.WriteLine("PostState Changed!");
+    private void OnSubmit()
+    {
+        if (editContext.Validate())
+        {
+            if (Order.OrderID != 0)
+            {
+                Dispatcher.Dispatch(new AsyncUpdateOrderAction { Order = Order });
+            }
+            else
+            {
+                Dispatcher.Dispatch(new AsyncAddOrderAction { Order = Order });
+            }
+        }
+        else
+        {
+            System.Console.WriteLine("InValid!");
+        }
+    }
+
+    public void ResetForm()
+    {
+        Order = new Order();
+        editContext = new(Order);
+        EditFormButtonPressed.InvokeAsync();
+    }
+
+    public void PopulateForm()
+    {
+        Order.OrderID = OrderState.Value.Order.OrderID;
+        Order.CustomerID = OrderState.Value.Order.CustomerID;
+        Order.Freight = OrderState.Value.Order.Freight;
+        Order.ShipCity = OrderState.Value.Order.ShipCity;
+        editContext = new(Order);
+    }
+
+
+    public bool IsEditForm()
+    {
+        return (OrderState.Value.Order.OrderID != 0 && Order.OrderID != 0);
+
+    }
+
+    public new void Dispose()
+    {        
+        OrderState.StateChanged -= OrderState_StateChanged;
+        ActionSubscriber.UnsubscribeFromAllActions(this);
+    }
+    [Parameter] public Order Data { get; set; } = new Order();
+}

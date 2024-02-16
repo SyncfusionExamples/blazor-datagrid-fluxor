@@ -1,0 +1,160 @@
+﻿@page "/"
+@inherits FluxorComponent
+@implements IDisposable
+@inject OrderService userService
+@inject IDispatcher Dispatcher
+@inject IState<OrdersState> OrdersState
+@inject IState<OrderState> OrderState
+@inject IActionSubscriber ActionSubscriber
+@using FluxorSyncfusionGrid.Client.Services;
+@using FluxorSyncfusionGrid.Shared;
+
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Navigations
+@using Syncfusion.Blazor.Popups;
+
+
+<SfGrid TValue="Order" ID="Grid" DataSource="@OrdersState.Value.Orders" Toolbar="Toolbaritems" AllowSorting="true" AllowFiltering="true" AllowPaging="true">
+
+    <GridPageSettings PageSize="5"></GridPageSettings>
+    <GridEvents TValue="Order" CommandClicked="OnCommandClicked" OnToolbarClick="ToolbarClickHandler" RowSelected="OnSelect"></GridEvents>
+    <GridColumns>
+        <GridColumn Field=@nameof(Order.OrderID) HeaderText="ID" IsPrimaryKey="true" TextAlign="@TextAlign.Center" Width="140"></GridColumn>
+        <GridColumn Field=@nameof(Order.CustomerID) HeaderText="Customer ID" Width="150"></GridColumn>
+        <GridColumn Field=@nameof(Order.ShipCity) HeaderText="ShipCity" Width="150"></GridColumn>
+        <GridColumn Field=@nameof(Order.Freight) Format="C2" HeaderText="Freight" Width="150"></GridColumn>
+        <GridColumn HeaderText="View Details" TextAlign="TextAlign.Center" Width="150">
+            <GridCommandColumns>
+                <GridCommandColumn ButtonOption="@(new CommandButtonOptions() { IconCss="e-icons e-edit"})" Title="Edit"></GridCommandColumn>
+                <GridCommandColumn ButtonOption="@(new CommandButtonOptions() { IconCss="e-icons e-delete"})" Title="Delete"></GridCommandColumn>
+            </GridCommandColumns>
+        </GridColumn>
+    </GridColumns>
+</SfGrid>
+
+<SfDialog @ref="Dialog" Height="400px" Width="600px" @bind-Visible="@IsVisible" ShowCloseIcon="true" IsModal="true" >
+    <DialogTemplates>
+        <Header>Order Information</Header>
+        <Content>
+
+            <RenderOrderEditForm IsAdd="@IsAdd" EditFormButtonPressed="HandleFormButtonClick" Data="@RowData"/>
+           
+        </Content>
+    </DialogTemplates>
+    <DialogPositionData X="@Xvalue" Y="@Yvalue"></DialogPositionData>
+</SfDialog>
+@code{
+
+    public int DynamicId { get; set; } = 0;
+    public bool IsVisible { get; set; }
+    public bool IsAdd { get; set; }
+    public Order RowData { get; set; } = new Order();
+    public SfDialog Dialog { get; set; }
+    private string Xvalue = "center";
+    private string Yvalue = "center";
+
+
+    private List<ItemModel> Toolbaritems = new List<ItemModel>();
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        ActionSubscriber.SubscribeToAction<AsyncUpdateOrderAction>(this, (Action) =>
+        {
+            ChangeIdToChange();
+        });
+
+        ActionSubscriber.SubscribeToAction<AsyncLoadOrderAction>(this, (Action) =>
+        {
+            ChangeIdToChange(0);
+        });
+
+        ActionSubscriber.SubscribeToAction<ResetOrderAction>(this, (Action) =>
+        {
+            ChangeIdToChange(0);
+        });
+
+        Toolbaritems.Add(new ItemModel() { Text = "New Order", TooltipText = "Add new", PrefixIcon = "e-expand" });
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        if (!OrdersState.Value.Orders.Any())
+        {
+            await InvokeAsync(() => { Dispatcher.Dispatch(new AsyncLoadOrdersAction()); });
+        }
+    }
+
+    public void OnCommandClicked(CommandClickEventArgs<Order> args)
+    {
+        IsAdd = false;
+        Order user = new Order
+            {
+                OrderID = args.RowData.OrderID,
+                CustomerID = args.RowData.CustomerID,
+                Freight = args.RowData.Freight,
+                ShipCity = args.RowData.ShipCity
+            };
+        if (args.CommandColumn.Title.Equals("Delete"))
+        {
+
+            OnDelete(user);
+        }
+        else
+        {
+
+            IsVisible = true;
+
+            RowData = args.RowData;
+            Dispatcher.Dispatch(new SetOrderAction { Order = user });            
+        }
+    }
+    public void OnSelect(RowSelectEventArgs<Order> args)
+    {
+        Order user = new Order
+            {
+                OrderID = args.Data.OrderID,
+                CustomerID = args.Data.CustomerID,
+                Freight = args.Data.Freight,
+                ShipCity = args.Data.ShipCity
+            };
+        Dispatcher.Dispatch(new SetOrderAction { Order = user });
+    }
+
+    public void HandleFormButtonClick()
+
+    {
+
+        IsVisible = false;
+        RowData = new Order();
+        IsAdd = false;
+
+    }
+
+    public void OnDelete(Order item)
+    {
+        Dispatcher.Dispatch(new AsyncDeleteOrderAction { Order = item });
+        ChangeIdToChange(item.OrderID);
+    }
+    public async Task ToolbarClickHandler(Syncfusion.Blazor.Navigations.ClickEventArgs args)
+    {
+        IsVisible = true;
+        IsAdd = true;
+        RowData = new Order();
+    }
+
+
+    public void OnRefresh()
+    {
+        Dispatcher.Dispatch(new AsyncLoadOrdersAction());
+    }
+
+    public void ChangeIdToChange(int? id = null)
+    {
+        DynamicId = (id == null) ? new Random().Next()  : (int)id;
+        StateHasChanged();
+    }
+}
