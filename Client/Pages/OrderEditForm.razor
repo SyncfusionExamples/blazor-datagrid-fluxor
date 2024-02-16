@@ -1,0 +1,74 @@
+﻿@using Syncfusion.Blazor.Inputs;
+@using FluxorSyncfusionGrid.Shared;
+
+@if (EditContext != null)
+{
+    <div>
+        <EditForm EditContext="@EditContext" OnSubmit="@HandleSubmit">
+            @if (IsEditForm)
+            {
+                <p>Edit the Order info </p>
+            }
+            else
+            {
+                <p>Add the new user info</p>
+            }
+
+            <div class="errors">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+            </div>
+
+            <CascadingValue Value="EditContext" Name="EditContext">
+                @ChildContent
+
+                
+            </CascadingValue>
+
+            <div>
+                <span></span>
+            </div>
+            <div>
+                <button type="submit">Save</button>                
+                <button type="button" @onclick="HandleClose">Close Form</button>
+            </div>
+
+           
+            
+        </EditForm>
+    </div>
+}
+else
+{
+    <p >Loading...</p>
+}
+@code{
+    [Parameter]
+    public EventCallback ButtonPressed { get; set; }
+
+    public void HandleClose()
+
+    {
+        ButtonPressed.InvokeAsync();
+
+    }
+
+    [Parameter]
+    public Action HandleSubmit { get; set; } = () =>
+       {
+           System.Console.WriteLine("Add your own Handle Submit method.");
+       };
+    [Parameter]
+    public Action HandleReset { get; set; } = () =>
+    {
+        System.Console.WriteLine("Add your own Handle Reset method.");
+    };
+    [Parameter]
+    public Action HandleSelect { get; set; } = () =>
+    {
+        System.Console.WriteLine("Add your own Handle Select method.");
+    };
+    [Parameter] public EditContext EditContext { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public bool IsEditForm { get; set; } = false;
+}

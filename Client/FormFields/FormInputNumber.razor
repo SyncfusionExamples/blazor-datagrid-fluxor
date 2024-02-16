@@ -1,0 +1,55 @@
+@typeparam TValue
+@inherits FormBaseInput<TValue>
+@using System.Globalization
+
+@if (IsHiddenInput())
+{
+    <input @attributes="AdditionalAttributes" value="@Value" />
+}
+else 
+{
+    <div class="StyleInputNumber">
+        @if (!string.IsNullOrEmpty(Label))
+        {
+            <label>@Label</label>
+        }
+
+        <input 
+            @attributes="AdditionalAttributes" 
+            @bind-value="@Value" 
+            @oninput="@(async (ChangeEventArgs) => { await HandleOnChange(ChangeEventArgs); })" />
+        
+        @if (ErrorMessages != null)
+        {
+            <div class="errors">
+                @foreach (string message in ErrorMessages)
+                {
+                    <div class="validation-message">@message</div>
+                }
+            </div>
+        }
+        
+    </div>
+}
+
+@code {
+
+    private async Task HandleOnChange(ChangeEventArgs args)
+    {   
+        object value = args.Value.ToString();
+        TValue newValue;
+
+        BindConverter.TryConvertTo<TValue>(RemoveNonNumericCharacters(value), CultureInfo.CurrentCulture, out newValue);
+        
+        decimal? newValueAsDecimal = newValue == null ? default(decimal?) : (decimal)Convert.ChangeType(newValue, typeof(decimal));
+
+        Value = (TValue)Convert.ChangeType(newValueAsDecimal, typeof(TValue));
+
+        await ValueChanged.InvokeAsync(Value);
+        
+        if (EditContext != null && ! string.IsNullOrEmpty(Name))
+        {
+            EditContext.NotifyFieldChanged(EditContext.Field(Name));
+        }
+    }
+}

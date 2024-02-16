@@ -1,0 +1,84 @@
+@typeparam TValue
+@using System.Globalization
+@implements IDisposable
+
+@code {
+    [CascadingParameter(Name = "EditContext")] protected EditContext EditContext { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object> AdditionalAttributes { get; set; }
+    [Parameter] public string Label { get; set; }
+    [Parameter] public TValue Value { 
+        get
+        {
+            return _value;
+        }
+        set
+        {
+            if (!EqualityComparer<TValue>.Default.Equals(value, _value))
+            {
+                _value = value;
+            }
+        }
+    }
+    [Parameter] public EventCallback<TValue> ValueChanged { get; set; }
+    [Parameter] public string Name { get; set; }
+    protected IEnumerable<string> ErrorMessages { get; set; } = new List<string>();
+    protected TValue _value;
+
+    protected override void OnInitialized()
+    {
+        if (EditContext != null)
+        {
+            EditContext.OnFieldChanged += EditContext_OnFieldChanged;
+            EditContext.OnValidationRequested += EditContext_OnValidationRequested;
+        }
+    }
+
+    protected void EditContext_OnFieldChanged(object sender, FieldChangedEventArgs e)
+    {
+        HandleErrorEvents();
+    }
+
+    protected void EditContext_OnValidationRequested(object sender, ValidationRequestedEventArgs e)
+    {
+        HandleErrorEvents();
+    }
+
+    protected string RemoveNonNumericCharacters(object value)
+    {
+        string valueStr = value as string;
+        if (valueStr == null)
+        {
+            valueStr = value.ToString();
+        }
+        return new string(valueStr.Where(c => char.IsDigit(c) || char.IsPunctuation(c)).ToArray());
+    }
+
+    protected bool IsHiddenInput()
+    {
+        return (AdditionalAttributes != null 
+                && AdditionalAttributes.ContainsKey("type") 
+                && AdditionalAttributes["type"].ToString() == "hidden");
+    }
+
+    private void HandleErrorEvents()
+    {
+        EditContext.IsModified();
+        EditContext.NotifyValidationStateChanged();
+        
+        if (EditContext != null && ! string.IsNullOrEmpty(Name))
+        {
+            ErrorMessages = EditContext.GetValidationMessages(EditContext.Field(Name));
+        }
+
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        if (EditContext != null)
+        {
+            EditContext.OnFieldChanged -= EditContext_OnFieldChanged;
+            EditContext.OnValidationRequested -= EditContext_OnValidationRequested;
+        }
+    }
+}
