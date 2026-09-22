@@ -2,7 +2,7 @@
 
 ## Overview
 
-This repository demonstrates how to integrate a Syncfusion Blazor DataGrid with Fluxor state management in a hosted Blazor application. The solution is organized into separate Client, Server, and Shared projects and provides a reference architecture for managing Grid data through a centralized Fluxor store instead of directly binding data within UI components. The sample shows how a Syncfusion DataGrid can participate in a predictable state-management workflow while sharing models between application layers.
+This repository demonstrates how to integrate a Syncfusion [Blazor DataGrid](https://www.syncfusion.com/blazor-components/blazor-datagrid) with Fluxor state management in a hosted Blazor application. The solution is organized into separate Client, Server, and Shared projects and provides a reference architecture for managing Grid data through a centralized Fluxor store instead of directly binding data within UI components. The sample shows how a Syncfusion DataGrid can participate in a predictable state-management workflow while sharing models between application layers.
 
 ## Key Features
 
